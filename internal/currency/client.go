@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-const (
-	// Using the standard public instance. 
+var (
+	// Using the standard public instance.
 	// If you have a specific internal mirror, change this URL.
-	BaseURL = "https://api.frankfurter.app" 
+	BaseURL    = "https://api.frankfurter.app"
 	MaxRetries = 5
 )
 

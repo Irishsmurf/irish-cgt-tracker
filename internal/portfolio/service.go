@@ -118,15 +118,7 @@ func (s *Service) getSale(id string) (*models.Sale, error) {
 // Ordered by Date ASC to support FIFO.
 func (s *Service) getAvailableInventory() ([]InventoryItem, error) {
 	// Query: Select Vest details AND the sum of quantities used in sale_lots
-	query := `
-		SELECT
-			v.id, v.date, v.symbol, v.quantity, v.strike_price_cents, v.ecb_rate,
-			COALESCE(SUM(sl.quantity), 0) as used_qty
-		FROM vests v
-		LEFT JOIN sale_lots sl ON v.id = sl.vest_id
-		GROUP BY v.id
-		ORDER BY v.date ASC
-	`
+	query := `SELECT v.id, v.date, v.symbol, v.quantity, v.strike_price_cents, v.ecb_rate, COALESCE(SUM(sl.quantity), 0) as used_qty FROM vests v LEFT JOIN sale_lots sl ON v.id = sl.vest_id GROUP BY v.id ORDER BY v.date ASC`
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, err
