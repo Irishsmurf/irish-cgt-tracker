@@ -43,6 +43,25 @@ CREATE TABLE IF NOT EXISTS sale_lots (
     FOREIGN KEY(vest_id) REFERENCES vests(id),
     PRIMARY KEY (sale_id, vest_id)
 );
+
+CREATE TABLE IF NOT EXISTS settled_sales (
+    sale_date TEXT,
+    ticker TEXT,
+    num_shares INTEGER,
+    sale_price_usd INTEGER,
+    gain_loss_usd INTEGER,
+    book_value_usd INTEGER,
+    exchange_rate_at_vest REAL,
+    gross_proceed_usd INTEGER,
+    vesting_value_usd INTEGER,
+    exchange_rate_at_sale REAL,
+    euro_sale_eur INTEGER,
+    euro_gain_eur INTEGER,
+    cgt_tax_due_eur INTEGER,
+    completed TEXT,
+    net_proceeds_eur INTEGER,
+    type TEXT
+);
 `
 
 // InitDB establishes a connection to a SQLite database at the given file path.

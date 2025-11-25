@@ -10,6 +10,12 @@ import (
 	"irish-cgt-tracker/internal/models"
 )
 
+// `InventoryItem` augments a `Vest` with the calculated remaining quantity.
+type InventoryItem struct {
+	models.Vest
+	RemainingQty int64
+}
+
 // SaleDTO (Data Transfer Object) is a simple wrapper around the models.Sale struct.
 // It's used to transfer sale data, particularly for presentation layers, without
 // necessarily exposing the full internal model.
@@ -59,6 +65,34 @@ func (s *Service) GetAllSales() ([]SaleDTO, error) {
 			return nil, err
 		}
 		sales = append(sales, item)
+	}
+	return sales, nil
+}
+
+func (s *Service) GetSettledSales() ([]models.SettledSale, error) {
+	rows, err := s.db.Query(`
+        SELECT sale_date, ticker, num_shares, sale_price_usd, gain_loss_usd, book_value_usd,
+               exchange_rate_at_vest, gross_proceed_usd, vesting_value_usd, exchange_rate_at_sale,
+               euro_sale_eur, euro_gain_eur, cgt_tax_due_eur, completed, net_proceeds_eur, type
+        FROM settled_sales ORDER BY sale_date DESC
+    `)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sales []models.SettledSale
+	for rows.Next() {
+		var ss models.SettledSale
+		err := rows.Scan(
+			&ss.SaleDate, &ss.Ticker, &ss.NumShares, &ss.SalePriceUSD, &ss.GainLossUSD, &ss.BookValueUSD,
+			&ss.ExchangeRateAtVest, &ss.GrossProceedUSD, &ss.VestingValueUSD, &ss.ExchangeRateAtSale,
+			&ss.EuroSaleEUR, &ss.EuroGainEUR, &ss.CGTTaxDueEUR, &ss.Completed, &ss.NetProceedsEUR, &ss.Type,
+		)
+		if err != nil {
+			return nil, err
+		}
+		sales = append(sales, ss)
 	}
 	return sales, nil
 }
@@ -197,4 +231,3 @@ func (s *Service) markSaleSettled(saleID string) error {
 	_, err := s.db.Exec("UPDATE sales SET is_settled = 1 WHERE id = ?", saleID)
 	return err
 }
-

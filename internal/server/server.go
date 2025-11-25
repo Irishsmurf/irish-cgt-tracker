@@ -7,20 +7,22 @@ import (
 	"strconv"
 
 	"irish-cgt-tracker/internal/auth"
+	"irish-cgt-tracker/internal/models"
 	"irish-cgt-tracker/internal/portfolio"
 )
 
 // Server holds the dependencies for the HTTP server, including the portfolio service,
 // HTML templates, session store, and authentication settings.
 type Server struct {
-	svc       *portfolio.Service
-	tmpl      *template.Template
-	loginTmpl *template.Template
-	sessions  *auth.SessionStore
-	useAuth   bool
+	svc          *portfolio.Service
+	tmpl         *template.Template
+	loginTmpl    *template.Template
+	settledTmpl  *template.Template // For the new export page
+	sessions     *auth.SessionStore
+	useAuth      bool
 }
 
-// NewServer initializes and configures a new Server instance.
+// NewServer initializes and new Server instance.
 // It parses the necessary HTML templates and sets up a function map for use
 // within the templates, providing utility functions for formatting data.
 //
@@ -45,20 +47,24 @@ func NewServer(svc *portfolio.Service, useAuth bool) *Server {
 
 	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles("web/templates/index.html")
 	if err != nil {
-		log.Fatalf("Failed to parse main template: %v", err)
+		log.Fatalf("Failed to parse index templates: %v", err)
 	}
-
 	loginTmpl, err := template.ParseFiles("web/templates/login.html")
 	if err != nil {
-		log.Fatalf("Failed to parse login template: %v", err)
+		log.Fatalf("Failed to parse login templates: %v", err)
+	}
+	settledTmpl, err := template.New("settled.html").Funcs(funcMap).ParseFiles("web/templates/settled.html")
+	if err != nil {
+		log.Fatalf("Failed to parse settled templates: %v", err)
 	}
 
 	return &Server{
-		svc:       svc,
-		tmpl:      tmpl,
-		loginTmpl: loginTmpl,
-		sessions:  auth.NewSessionStore(),
-		useAuth:   useAuth,
+		svc:         svc,
+		tmpl:        tmpl,
+		loginTmpl:   loginTmpl,
+		settledTmpl: settledTmpl,
+		sessions:    auth.NewSessionStore(),
+		useAuth:     useAuth,
 	}
 }
 
@@ -78,7 +84,8 @@ func (s *Server) Start(addr string) {
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/vests", s.handleAddVest)
 	mux.HandleFunc("/sales", s.handleAddSale)
-	mux.HandleFunc("/sales/", s.handleSettleOrSales) // Simple pattern for settle action
+	mux.HandleFunc("/sales/", s.handleSettleOrSales)
+	mux.HandleFunc("/settled", s.handleSettled)
 
 	// Apply authentication middleware if enabled
 	var handler http.Handler = mux
@@ -131,10 +138,26 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 // DataDTO is a composite struct that aggregates all the necessary data
 // for rendering the main application view (the index.html template).
-type DataDTO struct {
-	Vests []portfolio.InventoryItem
-	Sales []portfolio.SaleDTO
-}
+    type DataDTO struct {
+        Vests []portfolio.InventoryItem
+        Sales []portfolio.SaleDTO
+    }
+
+    // SettledDataDTO holds the data for the export view.
+    type SettledDataDTO struct {
+        SettledSales []models.SettledSale
+    }
+
+    func (s *Server) handleSettled(w http.ResponseWriter, r *http.Request) {
+        settledSales, err := s.svc.GetSettledSales()
+        if err != nil {
+            http.Error(w, err.Error(), 500)
+            return
+        }
+
+        data := SettledDataDTO{SettledSales: settledSales}
+        s.settledTmpl.Execute(w, data)
+    }
 
 // handleIndex fetches the current portfolio data (vests and sales) and
 // renders the main application page.
@@ -239,4 +262,3 @@ func (s *Server) fetchData() (DataDTO, error) {
 	}
 	return DataDTO{Vests: vests, Sales: sales}, nil
 }
-
