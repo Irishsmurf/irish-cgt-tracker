@@ -1,0 +1,22 @@
+services:
+  cgt-tracker:
+    # Build using the Dockerfile in the current directory
+    build: . 
+    container_name: irish-cgt-tracker
+    restart: unless-stopped
+    
+    # Map port 8080 on host to 8080 in container
+    ports:
+      - "8080:8080"
+    
+    # Persist the database to your host machine
+    # The left side (./data) is the folder on your computer
+    # The right side (/app/data) is where the code looks for the DB
+    volumes:
+      - ./data:/app/data
+    
+    # Set your login credentials here
+    environment:
+      - APP_USER=admin
+      - APP_PASSWORD=ChangeThisPassword123!
+
