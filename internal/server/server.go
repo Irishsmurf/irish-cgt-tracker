@@ -138,26 +138,26 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 // DataDTO is a composite struct that aggregates all the necessary data
 // for rendering the main application view (the index.html template).
-type DataDTO struct {
-	Vests []portfolio.InventoryItem
-	Sales []portfolio.SaleDTO
-}
+    type DataDTO struct {
+        Vests []portfolio.InventoryItem
+        Sales []portfolio.SaleDTO
+    }
 
-// SettledDataDTO holds the data for the export view.
-type SettledDataDTO struct {
-	SettledSales []models.SettledSale
-}
+    // SettledDataDTO holds the data for the export view.
+    type SettledDataDTO struct {
+        SettledSales []models.SettledSale
+    }
 
-func (s *Server) handleSettled(w http.ResponseWriter, r *http.Request) {
-	settledSales, err := s.svc.GetSettledSales()
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
+    func (s *Server) handleSettled(w http.ResponseWriter, r *http.Request) {
+        settledSales, err := s.svc.GetSettledSales()
+        if err != nil {
+            http.Error(w, err.Error(), 500)
+            return
+        }
 
-	data := SettledDataDTO{SettledSales: settledSales}
-	s.settledTmpl.Execute(w, data)
-}
+        data := SettledDataDTO{SettledSales: settledSales}
+        s.settledTmpl.Execute(w, data)
+    }
 
 // handleIndex fetches the current portfolio data (vests and sales) and
 // renders the main application page.
