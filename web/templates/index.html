@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irish CGT Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <style>
+        .loss { color: #b71c1c; }
+        .gain { color: #1b5e20; }
+        header { padding-bottom: 20px; border-bottom: 1px solid #ccc; margin-bottom: 20px;}
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>🇮🇪 Irish RSU/CGT Tracker</h1>
+            <p>Dual-Conversion Calculation Engine</p>
+        </header>
+
+        <div class="grid">
+            <article>
+                <header><strong>Record Vest (Acquisition)</strong></header>
+                <form hx-post="/vests" hx-target="#tables" hx-swap="innerHTML">
+                    <label>Date
+                        <input type="date" name="date" required>
+                    </label>
+                    <label>Symbol
+                        <input type="text" name="symbol" value="GOOG" required>
+                    </label>
+                    <label>Quantity
+                        <input type="number" name="qty" required>
+                    </label>
+                    <label>Strike Price ($)
+                        <input type="number" step="0.01" name="price" required>
+                    </label>
+                    <button type="submit">Add Vest</button>
+                </form>
+            </article>
+
+            <article>
+                <header><strong>Record Sale (Disposal)</strong></header>
+                <form hx-post="/sales" hx-target="#tables" hx-swap="innerHTML">
+                    <label>Date
+                        <input type="date" name="date" required>
+                    </label>
+                    <label>Quantity
+                        <input type="number" name="qty" required>
+                    </label>
+                    <label>Sale Price ($)
+                        <input type="number" step="0.01" name="price" required>
+                    </label>
+                    <button type="submit" class="secondary">Add Sale</button>
+                </form>
+            </article>
+        </div>
+
+        <section id="tables">
+           {{ template "data_tables" . }}
+        </section>
+    </main>
+</body>
+</html>
+
+{{ define "data_tables" }}
+<h3>Vesting History</h3>
+<figure>
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Symbol</th>
+                <th>Qty</th>
+                <th>Price ($)</th>
+                <th>ECB Rate</th>
+                <th>Cost Basis (€)</th>
+                <th>Remaining</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{ range .Vests }}
+            <tr>
+                <td>{{ .Date }}</td>
+                <td>{{ .Symbol }}</td>
+                <td>{{ .Quantity }}</td>
+                <td>${{ printf "%.2f" (div .StrikePriceCents 100.0) }}</td>
+                <td>{{ .ECBRate }}</td>
+                <td>€{{ printf "%.2f" (calcEuro .StrikePriceCents .ECBRate) }}</td>
+                <td>{{ .RemainingQty }}</td> </tr>
+            {{ end }}
+        </tbody>
+    </table>
+</figure>
+
+<h3>Sales & Tax Calculations</h3>
+<figure>
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Qty</th>
+                <th>Price ($)</th>
+                <th>ECB Rate</th>
+                <th>Disposal (€)</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{ range .Sales }}
+            <tr>
+                <td>{{ .Date }}</td>
+                <td>{{ .Quantity }}</td>
+                <td>${{ printf "%.2f" (div .PriceCents 100.0) }}</td>
+                <td>{{ .ECBRate }}</td>
+                <td>€{{ printf "%.2f" (calcEuro .PriceCents .ECBRate) }}</td>
+                <td>
+                    {{ if .IsSettled }}
+                        <span class="gain">Settled</span>
+                    {{ else }}
+                        <span class="loss">Unsettled</span>
+                    {{ end }}
+                </td>
+                <td>
+                    {{ if not .IsSettled }}
+                    <button 
+                        hx-post="/sales/{{.ID}}/settle" 
+                        hx-target="#tables"
+                        hx-swap="innerHTML"
+                        class="contrast outline">
+                        Calculate Tax
+                    </button>
+                    {{ else }}
+                    -
+                    {{ end }}
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+</figure>
+{{ end }}
+

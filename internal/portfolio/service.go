@@ -10,8 +10,35 @@ import (
 	"irish-cgt-tracker/internal/models"
 )
 
+type SaleDTO struct {
+    models.Sale
+}
+
 type Service struct {
 	db *sql.DB
+}
+
+// Public wrapper for inventory
+func (s *Service) GetInventory() ([]InventoryItem, error) {
+	return s.getAvailableInventory()
+}
+
+func (s *Service) GetAllSales() ([]SaleDTO, error) {
+	rows, err := s.db.Query("SELECT id, date, quantity, price_cents, ecb_rate, is_settled FROM sales ORDER BY date DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sales []SaleDTO
+	for rows.Next() {
+		var item SaleDTO
+		if err := rows.Scan(&item.ID, &item.Date, &item.Quantity, &item.PriceCents, &item.ECBRate, &item.IsSettled); err != nil {
+			return nil, err
+		}
+		sales = append(sales, item)
+	}
+	return sales, nil
 }
 
 func NewService(db *sql.DB) *Service {
