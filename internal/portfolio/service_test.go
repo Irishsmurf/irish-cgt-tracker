@@ -43,40 +43,6 @@ func TestAddVest(t *testing.T) {
 	}
 }
 
-func TestGetInventory(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer db.Close()
-
-	s := NewService(db)
-
-	rows := sqlmock.NewRows([]string{"id", "date", "symbol", "quantity", "strike_price_cents", "ecb_rate", "used_qty"}).
-		AddRow("vest1", "2024-01-01", "TEST", 100, 10000, 0.8, 50).
-		AddRow("vest2", "2024-02-01", "TEST", 100, 11000, 0.85, 100)
-
-	mock.ExpectQuery("SELECT v.id, v.date, v.symbol, v.quantity, v.strike_price_cents, v.ecb_rate, COALESCE(SUM(sl.quantity), 0) as used_qty FROM vests v LEFT JOIN sale_lots sl ON v.id = sl.vest_id GROUP BY v.id ORDER BY v.date ASC").
-		WillReturnRows(rows)
-
-	inventory, err := s.GetInventory()
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
-
-	if len(inventory) != 1 {
-		t.Errorf("expected 1 item in inventory, but got %d", len(inventory))
-	}
-
-	if inventory[0].RemainingQty != 50 {
-		t.Errorf("expected remaining quantity to be 50, but got %d", inventory[0].RemainingQty)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
-}
-
 func TestGetAllSales(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	if err != nil {

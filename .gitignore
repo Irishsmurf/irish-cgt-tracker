@@ -1,1 +1,5 @@
 data/
+*.db
+cookie.txt
+server.log
+cgt-tracker

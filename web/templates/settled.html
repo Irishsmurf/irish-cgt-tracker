@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settled Sales Export - Irish CGT Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        body { font-family: monospace; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f2f2f2; text-align: left; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>Export Settled Sales</h1>
+            <p>This table is designed for easy copy-pasting into a spreadsheet.</p>
+            <p><a href="/" role="button" class="secondary">Back to Main Page</a></p>
+        </header>
+
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Number of Shares</th>
+                        <th>Sale Price (USD)</th>
+                        <th>Gain/Loss (USD)</th>
+                        <th>Book Value (USD)</th>
+                        <th>Exchange Rate at Vest</th>
+                        <th>Gross Proceed (USD)</th>
+                        <th>Vesting Value (USD)</th>
+                        <th>Ticker</th>
+                        <th>Exchange Rate at Sale</th>
+                        <th>Euro Sale (EUR)</th>
+                        <th>Euro Gain (EUR)</th>
+                        <th>CGT Tax Due (EUR)</th>
+                        <th>Completed (Y/N)</th>
+                        <th>Net Proceeds (EUR)</th>
+                        <th>Type (FIFO/FIFI)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .SettledSales }}
+                    <tr>
+                        <td>{{ .SaleDate }}</td>
+                        <td>{{ .NumShares }}</td>
+                        <td>{{ printf "%.2f" (div .SalePriceUSD 100.0) }}</td>
+                        <td>{{ printf "%.2f" (div .GainLossUSD 100.0) }}</td>
+                        <td>{{ printf "%.2f" (div .BookValueUSD 100.0) }}</td>
+                        <td>{{ .ExchangeRateAtVest }}</td>
+                        <td>{{ printf "%.2f" (div .GrossProceedUSD 100.0) }}</td>
+                        <td>{{ printf "%.2f" (div .VestingValueUSD 100.0) }}</td>
+                        <td>{{ .Ticker }}</td>
+                        <td>{{ .ExchangeRateAtSale }}</td>
+                        <td>{{ printf "%.2f" (div .EuroSaleEUR 100.0) }}</td>
+                        <td>{{ printf "%.2f" (div .EuroGainEUR 100.0) }}</td>
+                        <td>{{ printf "%.2f" (div .CGTTaxDueEUR 100.0) }}</td>
+                        <td>{{ .Completed }}</td>
+                        <td>{{ printf "%.2f" (div .NetProceedsEUR 100.0) }}</td>
+                        <td>{{ .Type }}</td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </figure>
+    </main>
+</body>
+</html>
