@@ -7,15 +7,17 @@ import (
 	"strconv"
     
     "irish-cgt-tracker/internal/auth"
+	"irish-cgt-tracker/internal/models"
 	"irish-cgt-tracker/internal/portfolio"
 )
 
 type Server struct {
-	svc *portfolio.Service
-	tmpl *template.Template
-    loginTmpl *template.Template
-    sessions *auth.SessionStore
-    useAuth bool
+	svc          *portfolio.Service
+	tmpl         *template.Template
+	loginTmpl    *template.Template
+	settledTmpl  *template.Template // For the new export page
+	sessions     *auth.SessionStore
+	useAuth      bool
 }
 
 func NewServer(svc *portfolio.Service, useAuth bool) *Server {
@@ -32,18 +34,25 @@ func NewServer(svc *portfolio.Service, useAuth bool) *Server {
 
 	// Parse templates
 	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles("web/templates/index.html")
-    loginTmpl, err := template.ParseFiles("web/templates/login.html")
-
 	if err != nil {
-		log.Fatalf("Failed to parse templates: %v", err)
+		log.Fatalf("Failed to parse index templates: %v", err)
+	}
+	loginTmpl, err := template.ParseFiles("web/templates/login.html")
+	if err != nil {
+		log.Fatalf("Failed to parse login templates: %v", err)
+	}
+	settledTmpl, err := template.New("settled.html").Funcs(funcMap).ParseFiles("web/templates/settled.html")
+	if err != nil {
+		log.Fatalf("Failed to parse settled templates: %v", err)
 	}
 
 	return &Server{
-		svc:  svc,
-		tmpl: tmpl,
-        loginTmpl: loginTmpl,
-        sessions: auth.NewSessionStore(),
-        useAuth: useAuth,
+		svc:         svc,
+		tmpl:        tmpl,
+		loginTmpl:   loginTmpl,
+		settledTmpl: settledTmpl,
+		sessions:    auth.NewSessionStore(),
+		useAuth:     useAuth,
 	}
 }
 
@@ -59,6 +68,7 @@ func (s *Server) Start(addr string) {
 	mux.HandleFunc("/vests", s.handleAddVest)
 	mux.HandleFunc("/sales", s.handleAddSale)
 	mux.HandleFunc("/sales/", s.handleSettleOrSales)
+	mux.HandleFunc("/settled", s.handleSettled)
 
 	// Wrap the mux with Auth Middleware
 	var handler http.Handler = mux
@@ -108,6 +118,22 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 type DataDTO struct {
 	Vests []portfolio.InventoryItem
 	Sales []portfolio.SaleDTO
+}
+
+// SettledDataDTO holds the data for the export view.
+type SettledDataDTO struct {
+	SettledSales []models.SettledSale
+}
+
+func (s *Server) handleSettled(w http.ResponseWriter, r *http.Request) {
+	settledSales, err := s.svc.GetSettledSales()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	data := SettledDataDTO{SettledSales: settledSales}
+	s.settledTmpl.Execute(w, data)
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
