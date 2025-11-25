@@ -50,7 +50,7 @@ func TestSettleSale_SimpleFIFO(t *testing.T) {
 	// 2. Expect the getAvailableInventory query
 	mock.ExpectQuery("SELECT v.id, v.date, v.symbol, v.quantity, v.strike_price_cents, v.ecb_rate, COALESCE(SUM(sl.quantity), 0) as used_qty FROM vests v LEFT JOIN sale_lots sl ON v.id = sl.vest_id GROUP BY v.id ORDER BY v.date ASC").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "date", "symbol", "quantity", "strike_price_cents", "ecb_rate", "used_qty"}).
-			AddRow(vest.ID, vest.Date, vest.Symbol, vest.Quantity, vest.StrikePriceCents, vest.ECBRate, 0))
+			AddRow(vest.Vest.ID, vest.Vest.Date, vest.Vest.Symbol, vest.Vest.Quantity, vest.Vest.StrikePriceCents, vest.Vest.ECBRate, 0))
 
 	// 3. Expect the saveLot insert
 	mock.ExpectExec("INSERT INTO sale_lots (sale_id, vest_id, quantity) VALUES (?, ?, ?)").

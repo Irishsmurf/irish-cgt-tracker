@@ -47,8 +47,8 @@ func (s *Service) SettleSale(saleID string) error {
 		// --- THE IRISH MATH ---
 		// 1. Cost Basis (EUR) for this specific chunk
 		// (USD Price * Qty) * Vest Rate
-		chunkCostUSD := float64(matchQty*vest.StrikePriceCents) / 100.0
-		chunkCostEUR := chunkCostUSD * vest.ECBRate
+		chunkCostUSD := float64(matchQty*vest.Vest.StrikePriceCents) / 100.0
+		chunkCostEUR := chunkCostUSD * vest.Vest.ECBRate
 		
 		// 2. Disposal Value (EUR) for this specific chunk
 		// (USD Price * Qty) * Sale Rate
@@ -60,12 +60,12 @@ func (s *Service) SettleSale(saleID string) error {
 		totalDisposalEUR += chunkSaleEUR
 
 		// Save the link (Lot) to DB
-		err := s.saveLot(sale.ID, vest.ID, matchQty)
+		err := s.saveLot(sale.ID, vest.Vest.ID, matchQty)
 		if err != nil {
 			return fmt.Errorf("failed to save lot: %w", err)
 		}
 
-		log.Printf("   Matched %d shares from Vest %s (Rate: %.4f)", matchQty, vest.Date, vest.ECBRate)
+		log.Printf("   Matched %d shares from Vest %s (Rate: %.4f)", matchQty, vest.Vest.Date, vest.Vest.ECBRate)
 		
 		remainingToSell -= matchQty
 	}

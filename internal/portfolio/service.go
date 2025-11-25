@@ -33,7 +33,7 @@ func (s *Service) GetAllSales() ([]SaleDTO, error) {
 	var sales []SaleDTO
 	for rows.Next() {
 		var item SaleDTO
-		if err := rows.Scan(&item.ID, &item.Date, &item.Quantity, &item.PriceCents, &item.ECBRate, &item.IsSettled); err != nil {
+		if err := rows.Scan(&item.Sale.ID, &item.Sale.Date, &item.Sale.Quantity, &item.Sale.PriceCents, &item.Sale.ECBRate, &item.Sale.IsSettled); err != nil {
 			return nil, err
 		}
 		sales = append(sales, item)
@@ -129,10 +129,10 @@ func (s *Service) getAvailableInventory() ([]InventoryItem, error) {
 	for rows.Next() {
 		var item InventoryItem
 		var usedQty int64
-		if err := rows.Scan(&item.ID, &item.Date, &item.Symbol, &item.Quantity, &item.StrikePriceCents, &item.ECBRate, &usedQty); err != nil {
+		if err := rows.Scan(&item.Vest.ID, &item.Vest.Date, &item.Vest.Symbol, &item.Vest.Quantity, &item.Vest.StrikePriceCents, &item.Vest.ECBRate, &usedQty); err != nil {
 			return nil, err
 		}
-		item.RemainingQty = item.Quantity - usedQty
+		item.RemainingQty = item.Vest.Quantity - usedQty
 
 		// Only add to inventory if there are shares left
 		if item.RemainingQty > 0 {
