@@ -13,26 +13,31 @@ func main() {
 	if err := os.MkdirAll("./data", 0755); err != nil {
 		log.Fatal(err)
 	}
+	// Clean start for this test run
+	os.Remove("./data/portfolio.db") 
+	
 	database := db.InitDB("./data/portfolio.db")
 	defer database.Close()
-
 	svc := portfolio.NewService(database)
 
-	// 2. Simulate User Input: Adding a Vest (Acquisition)
-	// Example: 100 shares of GOOG vest on a specific date
-	log.Println("--- Adding Vest ---")
-	_, err := svc.AddVest("2023-01-15", "GOOG", 100, 9500) // $95.00
-	if err != nil {
-		log.Printf("Error adding vest: %v", err)
-	}
+	// 2. Setup Data (Matches your Product Spec Test Case)
+	// Vest: 10 Units @ $100 on Jan 10 (Rate: ~0.93 on that day in 2023)
+	// Note: In 2023, Jan 10 was Tue. 
+	log.Println("--- Seed Data ---")
+	vest, _ := svc.AddVest("2023-01-10", "TEST", 10, 10000) // $100.00
+	
+	// Sale: 10 Units @ $105 on June 10 (Sat -> Fri June 9 rate)
+	sale, _ := svc.AddSale("2023-06-10", 10, 10500) // $105.00
 
-	// 3. Simulate User Input: Adding a Sale (Disposal)
-	// Example: Selling 50 shares later in the year
-	log.Println("--- Adding Sale ---")
-	_, err = svc.AddSale("2023-06-10", 50, 12000) // $120.00
+	// 3. Run Calculation
+	log.Println("--- Running FIFO Calculation ---")
+	err := svc.SettleSale(sale.ID)
 	if err != nil {
-		log.Printf("Error adding sale: %v", err)
+		log.Fatalf("Calculation failed: %v", err)
 	}
-
-	log.Println("--- Phase 1 Complete: Data persisted with Irish-compliant rates ---")
+	
+	// Verification
+	log.Printf("Used Vest Rate (Jan 10): %.4f", vest.ECBRate)
+	log.Printf("Used Sale Rate (Jun 09): %.4f", sale.ECBRate)
 }
+

@@ -77,3 +77,59 @@ func (s *Service) AddSale(date string, qty int64, priceCents int64) (*models.Sal
 	log.Printf("Sale recorded: %d shares on %s @ %.4f EUR/USD", qty, date, rate)
 	return sale, nil
 }
+
+func (s *Service) getSale(id string) (*models.Sale, error) {
+	var sale models.Sale
+	row := s.db.QueryRow("SELECT id, date, quantity, price_cents, ecb_rate, is_settled FROM sales WHERE id = ?", id)
+	if err := row.Scan(&sale.ID, &sale.Date, &sale.Quantity, &sale.PriceCents, &sale.ECBRate, &sale.IsSettled); err != nil {
+		return nil, err
+	}
+	return &sale, nil
+}
+
+// getAvailableInventory fetches all vests and subtracts shares already used in other sales.
+// Ordered by Date ASC to support FIFO.
+func (s *Service) getAvailableInventory() ([]InventoryItem, error) {
+	// Query: Select Vest details AND the sum of quantities used in sale_lots
+	query := `
+		SELECT
+			v.id, v.date, v.symbol, v.quantity, v.strike_price_cents, v.ecb_rate,
+			COALESCE(SUM(sl.quantity), 0) as used_qty
+		FROM vests v
+		LEFT JOIN sale_lots sl ON v.id = sl.vest_id
+		GROUP BY v.id
+		ORDER BY v.date ASC
+	`
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var inventory []InventoryItem
+	for rows.Next() {
+		var item InventoryItem
+		var usedQty int64
+		if err := rows.Scan(&item.ID, &item.Date, &item.Symbol, &item.Quantity, &item.StrikePriceCents, &item.ECBRate, &usedQty); err != nil {
+			return nil, err
+		}
+		item.RemainingQty = item.Quantity - usedQty
+
+		// Only add to inventory if there are shares left
+		if item.RemainingQty > 0 {
+			inventory = append(inventory, item)
+		}
+	}
+	return inventory, nil
+}
+
+func (s *Service) saveLot(saleID, vestID string, qty int64) error {
+	_, err := s.db.Exec("INSERT INTO sale_lots (sale_id, vest_id, quantity) VALUES (?, ?, ?)", saleID, vestID, qty)
+	return err
+}
+
+func (s *Service) markSaleSettled(saleID string) error {
+	_, err := s.db.Exec("UPDATE sales SET is_settled = 1 WHERE id = ?", saleID)
+	return err
+}
+
