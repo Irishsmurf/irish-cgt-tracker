@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Irish CGT</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        body, html { height: 100%; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0;}
+        main { width: 100%; max-width: 400px; padding: 20px; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <article>
+            <header><strong>Portfolio Access</strong></header>
+            <form action="/login" method="POST">
+                <label>Username
+                    <input type="text" name="username" required>
+                </label>
+                <label>Password
+                    <input type="password" name="password" required>
+                </label>
+                <button type="submit">Login</button>
+            </form>
+        </article>
+    </main>
+</body>
+</html>
+

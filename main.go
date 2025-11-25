@@ -20,10 +20,14 @@ func main() {
 	// 2. Setup Logic
 	svc := portfolio.NewService(database)
 
-	// 3. Setup and Start Web Server
-	srv := server.NewServer(svc)
+	// 3. Setup Web Server
+	// We pass true for 'enableAuth' to turn on the protection we are about to build
+	srv := server.NewServer(svc, true) 
 	
-	log.Println("Starting web server...")
-	log.Println("Go to http://coventry.paddez.com:8020")
-	srv.Start(":8020")
+	// Explicitly listen on 0.0.0.0 to allow external access (Docker/LAN)
+	addr := "0.0.0.0:8080"
+	log.Printf("Starting web server on %s...", addr)
+	
+	// Start
+	srv.Start(addr)
 }

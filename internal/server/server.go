@@ -5,16 +5,20 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-
+    
+    "irish-cgt-tracker/internal/auth"
 	"irish-cgt-tracker/internal/portfolio"
 )
 
 type Server struct {
 	svc *portfolio.Service
 	tmpl *template.Template
+    loginTmpl *template.Template
+    sessions *auth.SessionStore
+    useAuth bool
 }
 
-func NewServer(svc *portfolio.Service) *Server {
+func NewServer(svc *portfolio.Service, useAuth bool) *Server {
 	// Define helper functions for the template
 	funcMap := template.FuncMap{
 		"div": func(a int64, b float64) float64 {
@@ -28,6 +32,8 @@ func NewServer(svc *portfolio.Service) *Server {
 
 	// Parse templates
 	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles("web/templates/index.html")
+    loginTmpl, err := template.ParseFiles("web/templates/login.html")
+
 	if err != nil {
 		log.Fatalf("Failed to parse templates: %v", err)
 	}
@@ -35,19 +41,67 @@ func NewServer(svc *portfolio.Service) *Server {
 	return &Server{
 		svc:  svc,
 		tmpl: tmpl,
+        loginTmpl: loginTmpl,
+        sessions: auth.NewSessionStore(),
+        useAuth: useAuth,
 	}
 }
 
 // Start launches the HTTP server
 func (s *Server) Start(addr string) {
-	http.HandleFunc("/", s.handleIndex)
-	http.HandleFunc("/vests", s.handleAddVest)
-	http.HandleFunc("/sales", s.handleAddSale)
-	// Simple pattern matching for Settle ID (Go 1.22+ recommended, but we'll use basic strip prefix for safety)
-	http.HandleFunc("/sales/", s.handleSettleOrSales)
+	mux := http.NewServeMux()
 
-	log.Printf("Listening on %s...", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	// Public Routes
+	mux.HandleFunc("/login", s.handleLogin)
+
+	// Protected Routes
+	mux.HandleFunc("/", s.handleIndex)
+	mux.HandleFunc("/vests", s.handleAddVest)
+	mux.HandleFunc("/sales", s.handleAddSale)
+	mux.HandleFunc("/sales/", s.handleSettleOrSales)
+
+	// Wrap the mux with Auth Middleware
+	var handler http.Handler = mux
+	if s.useAuth {
+		handler = s.wrapAuth(mux)
+	}
+
+	log.Fatal(http.ListenAndServe(addr, handler))
+}
+
+// Middleware Wrapper
+func (s *Server) wrapAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Pass basic auth dependencies to the middleware function
+		auth.Middleware(s.sessions, next.ServeHTTP)(w, r)
+	})
+}
+
+// Login Handler
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		s.loginTmpl.Execute(w, nil)
+		return
+	}
+
+	// POST - Check Credentials
+	u := r.FormValue("username")
+	p := r.FormValue("password")
+
+	if auth.CheckCredentials(u, p) {
+		token := s.sessions.CreateSession()
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_token",
+			Value:    token,
+			Path:     "/",
+			HttpOnly: true, // Prevent XSS stealing cookie
+			Secure:   false, // Set true if using HTTPS
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	} else {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+	}
 }
 
 // DataDTO holds data for the view
