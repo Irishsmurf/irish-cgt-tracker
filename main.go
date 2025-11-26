@@ -37,7 +37,7 @@ func main() {
 
 	// 3. Setup Web Server
 	// Create a new server instance, enabling authentication.
-	srv := server.NewServer(svc, true)
+	srv := server.NewServer(svc, true, "web/templates")
 
 	// Define the server address. Listening on 0.0.0.0 makes it accessible
 	// from outside its container or on the local network.

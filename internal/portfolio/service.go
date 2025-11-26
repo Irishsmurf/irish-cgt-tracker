@@ -3,17 +3,19 @@ package portfolio
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/google/uuid"
 	"irish-cgt-tracker/internal/currency"
+	"irish-cgt-tracker/internal/importer"
 	"irish-cgt-tracker/internal/models"
 )
 
 // `InventoryItem` augments a `Vest` with the calculated remaining quantity.
 type InventoryItem struct {
 	models.Vest
-	RemainingQty int64
+	RemainingQty float64
 }
 
 // SaleDTO (Data Transfer Object) is a simple wrapper around the models.Sale struct.
@@ -110,7 +112,7 @@ func (s *Service) GetSettledSales() ([]models.SettledSale, error) {
 // Returns:
 //   - A pointer to the newly created models.Vest object.
 //   - An error if the exchange rate cannot be fetched or the database insertion fails.
-func (s *Service) AddVest(date string, symbol string, qty int64, strikePriceCents int64) (*models.Vest, error) {
+func (s *Service) AddVest(date string, symbol string, qty float64, strikePriceCents int64) (*models.Vest, error) {
 	rate, err := currency.FetchUSDToEUR(date)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch exchange rate for %s: %w", date, err)
@@ -131,7 +133,7 @@ func (s *Service) AddVest(date string, symbol string, qty int64, strikePriceCent
 		return nil, fmt.Errorf("failed to insert vest: %w", err)
 	}
 
-	log.Printf("Vest recorded: %d shares of %s on %s @ %.4f EUR/USD", qty, symbol, date, rate)
+	log.Printf("Vest recorded: %f shares of %s on %s @ %.4f EUR/USD", qty, symbol, date, rate)
 	return vest, nil
 }
 
@@ -148,7 +150,7 @@ func (s *Service) AddVest(date string, symbol string, qty int64, strikePriceCent
 // Returns:
 //   - A pointer to the newly created models.Sale object.
 //   - An error if the exchange rate cannot be fetched or the database insertion fails.
-func (s *Service) AddSale(date string, qty int64, priceCents int64) (*models.Sale, error) {
+func (s *Service) AddSale(date string, qty float64, priceCents int64) (*models.Sale, error) {
 	rate, err := currency.FetchUSDToEUR(date)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch exchange rate for %s: %w", date, err)
@@ -169,7 +171,7 @@ func (s *Service) AddSale(date string, qty int64, priceCents int64) (*models.Sal
 		return nil, fmt.Errorf("failed to insert sale: %w", err)
 	}
 
-	log.Printf("Sale recorded: %d shares on %s @ %.4f EUR/USD", qty, date, rate)
+	log.Printf("Sale recorded: %f shares on %s @ %.4f EUR/USD", qty, date, rate)
 	return sale, nil
 }
 
@@ -205,7 +207,7 @@ func (s *Service) getAvailableInventory() ([]InventoryItem, error) {
 	var inventory []InventoryItem
 	for rows.Next() {
 		var item InventoryItem
-		var usedQty int64
+		var usedQty float64
 		if err := rows.Scan(&item.ID, &item.Date, &item.Symbol, &item.Quantity, &item.StrikePriceCents, &item.ECBRate, &usedQty); err != nil {
 			return nil, err
 		}
@@ -220,7 +222,7 @@ func (s *Service) getAvailableInventory() ([]InventoryItem, error) {
 
 // saveLot records the link between a sale and a vest for a specific quantity of shares.
 // This is an internal helper function called by the SettleSale calculator.
-func (s *Service) saveLot(saleID, vestID string, qty int64) error {
+func (s *Service) saveLot(saleID, vestID string, qty float64) error {
 	_, err := s.db.Exec("INSERT INTO sale_lots (sale_id, vest_id, quantity) VALUES (?, ?, ?)", saleID, vestID, qty)
 	return err
 }
@@ -230,4 +232,36 @@ func (s *Service) saveLot(saleID, vestID string, qty int64) error {
 func (s *Service) markSaleSettled(saleID string) error {
 	_, err := s.db.Exec("UPDATE sales SET is_settled = 1 WHERE id = ?", saleID)
 	return err
+}
+
+// ImportVests parses a CSV of RSU releases and adds them to the portfolio.
+func (s *Service) ImportVests(r io.Reader, symbol string) error {
+	vests, err := importer.ParseVestCSV(r)
+	if err != nil {
+		return err
+	}
+
+	for _, vest := range vests {
+		if _, err := s.AddVest(vest.Date, symbol, vest.Quantity, vest.StrikePriceCents); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ImportSales parses a CSV of sales and adds them to the portfolio.
+func (s *Service) ImportSales(r io.Reader) error {
+	sales, err := importer.ParseSaleCSV(r)
+	if err != nil {
+		return err
+	}
+
+	for _, sale := range sales {
+		if _, err := s.AddSale(sale.Date, sale.Quantity, sale.PriceCents); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

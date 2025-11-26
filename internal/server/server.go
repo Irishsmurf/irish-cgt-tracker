@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"irish-cgt-tracker/internal/auth"
@@ -17,6 +18,7 @@ type Server struct {
 	svc          *portfolio.Service
 	tmpl         *template.Template
 	loginTmpl    *template.Template
+	importTmpl   *template.Template
 	settledTmpl  *template.Template // For the new export page
 	sessions     *auth.SessionStore
 	useAuth      bool
@@ -32,7 +34,7 @@ type Server struct {
 //
 // Returns:
 //   - A pointer to the fully configured Server.
-func NewServer(svc *portfolio.Service, useAuth bool) *Server {
+func NewServer(svc *portfolio.Service, useAuth bool, templateRoot string) *Server {
 	funcMap := template.FuncMap{
 		// div safely divides an int64 by a float64.
 		"div": func(a int64, b float64) float64 {
@@ -45,23 +47,28 @@ func NewServer(svc *portfolio.Service, useAuth bool) *Server {
 		},
 	}
 
-	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles("web/templates/index.html")
+	tmpl, err := template.New("index.html").Funcs(funcMap).ParseFiles(filepath.Join(templateRoot, "index.html"))
 	if err != nil {
 		log.Fatalf("Failed to parse index templates: %v", err)
 	}
-	loginTmpl, err := template.ParseFiles("web/templates/login.html")
+	loginTmpl, err := template.ParseFiles(filepath.Join(templateRoot, "login.html"))
 	if err != nil {
 		log.Fatalf("Failed to parse login templates: %v", err)
 	}
-	settledTmpl, err := template.New("settled.html").Funcs(funcMap).ParseFiles("web/templates/settled.html")
+	settledTmpl, err := template.New("settled.html").Funcs(funcMap).ParseFiles(filepath.Join(templateRoot, "settled.html"))
 	if err != nil {
 		log.Fatalf("Failed to parse settled templates: %v", err)
+	}
+	importTmpl, err := template.ParseFiles(filepath.Join(templateRoot, "import.html"))
+	if err != nil {
+		log.Fatalf("Failed to parse import templates: %v", err)
 	}
 
 	return &Server{
 		svc:         svc,
 		tmpl:        tmpl,
 		loginTmpl:   loginTmpl,
+		importTmpl:  importTmpl,
 		settledTmpl: settledTmpl,
 		sessions:    auth.NewSessionStore(),
 		useAuth:     useAuth,
@@ -86,6 +93,7 @@ func (s *Server) Start(addr string) {
 	mux.HandleFunc("/sales", s.handleAddSale)
 	mux.HandleFunc("/sales/", s.handleSettleOrSales)
 	mux.HandleFunc("/settled", s.handleSettled)
+	mux.HandleFunc("/import", s.handleImport)
 
 	// Apply authentication middleware if enabled
 	var handler http.Handler = mux
@@ -181,7 +189,7 @@ func (s *Server) handleAddVest(w http.ResponseWriter, r *http.Request) {
 
 	date := r.FormValue("date")
 	symbol := r.FormValue("symbol")
-	qty, _ := strconv.ParseInt(r.FormValue("qty"), 10, 64)
+	qty, _ := strconv.ParseFloat(r.FormValue("qty"), 64)
 	priceFloat, _ := strconv.ParseFloat(r.FormValue("price"), 64)
 	priceCents := int64(priceFloat * 100)
 
@@ -203,7 +211,7 @@ func (s *Server) handleAddSale(w http.ResponseWriter, r *http.Request) {
 	}
 
 	date := r.FormValue("date")
-	qty, _ := strconv.ParseInt(r.FormValue("qty"), 10, 64)
+	qty, _ := strconv.ParseFloat(r.FormValue("qty"), 64)
 	priceFloat, _ := strconv.ParseFloat(r.FormValue("price"), 64)
 	priceCents := int64(priceFloat * 100)
 
@@ -261,4 +269,45 @@ func (s *Server) fetchData() (DataDTO, error) {
 		return DataDTO{}, err
 	}
 	return DataDTO{Vests: vests, Sales: sales}, nil
+}
+
+func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		s.importTmpl.Execute(w, nil)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		file, _, err := r.FormFile("csvFile")
+		if err != nil {
+			http.Error(w, "Failed to read file", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		importType := r.FormValue("importType")
+		symbol := r.FormValue("symbol")
+		if importType == "vests" {
+			if symbol == "" {
+				http.Error(w, "Stock symbol is required for vests", http.StatusBadRequest)
+				return
+			}
+			if err := s.svc.ImportVests(file, symbol); err != nil {
+				log.Println("Error importing vests:", err)
+				http.Error(w, "Failed to import vests", http.StatusInternalServerError)
+				return
+			}
+		} else if importType == "sales" {
+			if err := s.svc.ImportSales(file); err != nil {
+				log.Println("Error importing sales:", err)
+				http.Error(w, "Failed to import sales", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			http.Error(w, "Invalid import type", http.StatusBadRequest)
+			return
+		}
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
 }

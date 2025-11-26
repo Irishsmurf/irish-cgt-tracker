@@ -30,10 +30,10 @@ func TestAddVest(t *testing.T) {
 	s := NewService(db)
 
 	mock.ExpectExec("INSERT INTO vests").
-		WithArgs(sqlmock.AnyArg(), "2024-01-01", "TEST", int64(100), int64(10000), 0.9).
+		WithArgs(sqlmock.AnyArg(), "2024-01-01", "TEST", 100.0, int64(10000), 0.9).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	_, err = s.AddVest("2024-01-01", "TEST", 100, 10000)
+	_, err = s.AddVest("2024-01-01", "TEST", 100.0, 10000)
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -53,8 +53,8 @@ func TestGetAllSales(t *testing.T) {
 	s := NewService(db)
 
 	rows := sqlmock.NewRows([]string{"id", "date", "quantity", "price_cents", "ecb_rate", "is_settled"}).
-		AddRow("sale1", "2024-02-01", 100, 15000, 0.9, false).
-		AddRow("sale2", "2024-03-01", 50, 16000, 0.95, true)
+		AddRow("sale1", "2024-02-01", 100.0, 15000, 0.9, false).
+		AddRow("sale2", "2024-03-01", 50.0, 16000, 0.95, true)
 
 	mock.ExpectQuery("SELECT id, date, quantity, price_cents, ecb_rate, is_settled FROM sales ORDER BY date DESC").
 		WillReturnRows(rows)
@@ -94,10 +94,10 @@ func TestAddSale(t *testing.T) {
 	s := NewService(db)
 
 	mock.ExpectExec("INSERT INTO sales").
-		WithArgs(sqlmock.AnyArg(), "2024-02-01", int64(50), int64(12000), 0.9, false).
+		WithArgs(sqlmock.AnyArg(), "2024-02-01", 50.0, int64(12000), 0.9, false).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	_, err = s.AddSale("2024-02-01", 50, 12000)
+	_, err = s.AddSale("2024-02-01", 50.0, 12000)
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}

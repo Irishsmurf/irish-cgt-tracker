@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"irish-cgt-tracker/internal/models"
 	"log"
+	"math"
 )
 
 // SettleSale performs the FIFO logic to match a sale against the oldest available vests.
@@ -30,7 +31,7 @@ func (s *Service) SettleSale(saleID string) error {
 			break
 		}
 
-		sharesToUse := min(sharesToSettle, vest.RemainingQty)
+		sharesToUse := math.Min(sharesToSettle, vest.RemainingQty)
 		if sharesToUse > 0 {
 			// Create a "lot" linking this portion of the sale to this specific vest
 			err := s.saveLot(sale.ID, vest.ID, sharesToUse)
@@ -45,12 +46,12 @@ func (s *Service) SettleSale(saleID string) error {
 			}
 
 			sharesToSettle -= sharesToUse
-			log.Printf("Settled %d shares from sale %s against vest %s", sharesToUse, sale.ID, vest.ID)
+			log.Printf("Settled %f shares from sale %s against vest %s", sharesToUse, sale.ID, vest.ID)
 		}
 	}
 
-	if sharesToSettle > 0 {
-		return fmt.Errorf("insufficient shares available to settle sale %s. %d shares remain unsettled", sale.ID, sharesToSettle)
+	if sharesToSettle > 0.0001 { // Allow for small floating point inaccuracies
+		return fmt.Errorf("insufficient shares available to settle sale %s. %f shares remain unsettled", sale.ID, sharesToSettle)
 	}
 
 	// 4. Mark the original sale as settled
@@ -58,7 +59,7 @@ func (s *Service) SettleSale(saleID string) error {
 }
 
 // calculateAndStoreCGT performs the core Irish CGT calculation for a single sale-vest lot.
-func (s *Service) calculateAndStoreCGT(sale *models.Sale, vest *models.Vest, numShares int64) error {
+func (s *Service) calculateAndStoreCGT(sale *models.Sale, vest *models.Vest, numShares float64) error {
 	// All calculations are in cents to avoid floating point issues
 	vestValuePerShare := float64(vest.StrikePriceCents)
 	saleValuePerShare := float64(sale.PriceCents)
@@ -82,18 +83,18 @@ func (s *Service) calculateAndStoreCGT(sale *models.Sale, vest *models.Vest, num
 		SaleDate:           sale.Date,
 		Ticker:             vest.Symbol,
 		NumShares:          numShares,
-		SalePriceUSD:       int64(saleValuePerShare * float64(numShares)),
-		GainLossUSD:        int64(gainLossUSD * float64(numShares)),
-		BookValueUSD:       int64(bookValueUSD * float64(numShares)),
+		SalePriceUSD:       int64(saleValuePerShare),
+		GainLossUSD:        int64(gainLossUSD * numShares),
+		BookValueUSD:       int64(bookValueUSD * numShares),
 		ExchangeRateAtVest: vest.ECBRate,
-		GrossProceedUSD:    int64(grossProceedUSD * float64(numShares)),
-		VestingValueUSD:    vest.StrikePriceCents * numShares,
+		GrossProceedUSD:    int64(grossProceedUSD * numShares),
+		VestingValueUSD:    int64(float64(vest.StrikePriceCents) * numShares),
 		ExchangeRateAtSale: sale.ECBRate,
-		EuroSaleEUR:        int64(euroDisposalValue * float64(numShares)),
-		EuroGainEUR:        int64(euroGain * float64(numShares)),
-		CGTTaxDueEUR:       int64(cgtTaxDue * float64(numShares)),
+		EuroSaleEUR:        int64(euroDisposalValue * numShares),
+		EuroGainEUR:        int64(euroGain * numShares),
+		CGTTaxDueEUR:       int64(cgtTaxDue * numShares),
 		Completed:          "Y",
-		NetProceedsEUR:     int64(netProceeds * float64(numShares)),
+		NetProceedsEUR:     int64(netProceeds * numShares),
 		Type:               "FIFO",
 	}
 
@@ -115,12 +116,4 @@ func (s *Service) insertSettledSale(ss models.SettledSale) error {
 		ss.EuroSaleEUR, ss.EuroGainEUR, ss.CGTTaxDueEUR, ss.Completed, ss.NetProceedsEUR, ss.Type,
 	)
 	return err
-}
-
-// Simple min function for int64
-func min(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
 }
