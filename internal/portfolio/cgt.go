@@ -82,7 +82,7 @@ func (s *Service) calculateAndStoreCGT(sale *models.Sale, vest *models.Vest, num
 		SaleDate:           sale.Date,
 		Ticker:             vest.Symbol,
 		NumShares:          numShares,
-		SalePriceUSD:       int64(saleValuePerShare),
+		SalePriceUSD:       int64(saleValuePerShare * float64(numShares)),
 		GainLossUSD:        int64(gainLossUSD * float64(numShares)),
 		BookValueUSD:       int64(bookValueUSD * float64(numShares)),
 		ExchangeRateAtVest: vest.ECBRate,

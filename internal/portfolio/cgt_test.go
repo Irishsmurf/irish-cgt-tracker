@@ -34,7 +34,7 @@ func TestSettleSale_Simple(t *testing.T) {
 
 	// 4. insertSettledSale
 	mock.ExpectExec("INSERT INTO settled_sales ( sale_date, ticker, num_shares, sale_price_usd, gain_loss_usd, book_value_usd, exchange_rate_at_vest, gross_proceed_usd, vesting_value_usd, exchange_rate_at_sale, euro_sale_eur, euro_gain_eur, cgt_tax_due_eur, completed, net_proceeds_eur, type ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").
-		WithArgs("2024-02-01", "TEST", int64(50), int64(15000), int64(250000), int64(500000), 0.8, int64(750000), int64(500000), 0.9, int64(675000), int64(275000), int64(90750), "Y", int64(584250), "FIFO").
+		WithArgs("2024-02-01", "TEST", int64(50), int64(750000), int64(250000), int64(500000), 0.8, int64(750000), int64(500000), 0.9, int64(675000), int64(275000), int64(90750), "Y", int64(584250), "FIFO").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// 5. markSaleSettled
