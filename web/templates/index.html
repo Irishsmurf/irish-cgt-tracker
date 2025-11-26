@@ -10,6 +10,18 @@
         .loss { color: #b71c1c; }
         .gain { color: #1b5e20; }
         header { padding-bottom: 20px; border-bottom: 1px solid #ccc; margin-bottom: 20px;}
+        .htmx-indicator {
+            display: none;
+        }
+
+        form.htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+
+        form.htmx-request button {
+            pointer-events: none;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -40,7 +52,7 @@
                     <label>Strike Price ($)
                         <input type="number" step="0.01" name="price" required>
                     </label>
-                    <button type="submit">Add Vest</button>
+                    <button type="submit">Add Vest</button><span class="htmx-indicator">...</span>
                 </form>
             </article>
 
@@ -56,7 +68,7 @@
                     <label>Sale Price ($)
                         <input type="number" step="0.01" name="price" required>
                     </label>
-                    <button type="submit" class="secondary">Add Sale</button>
+                    <button type="submit" class="secondary">Add Sale</button><span class="htmx-indicator">...</span>
                 </form>
             </article>
         </div>
