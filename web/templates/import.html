@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Import CSV</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+<body>
+    <main class="container">
+        <h1>Import CSV</h1>
+        <form action="/import" method="post" enctype="multipart/form-data">
+            <label for="csvFile">CSV File</label>
+            <input type="file" id="csvFile" name="csvFile" required>
+
+            <label for="symbol">Stock Symbol (Required for Vests)</label>
+            <input type="text" id="symbol" name="symbol">
+
+            <fieldset>
+                <legend>Import Type</legend>
+                <label for="vests">
+                    <input type="radio" id="vests" name="importType" value="vests" checked>
+                    RSU Releases
+                </label>
+                <label for="sales">
+                    <input type="radio" id="sales" name="importType" value="sales">
+                    Sales
+                </label>
+            </fieldset>
+
+            <button type="submit">Import</button>
+        </form>
+    </main>
+</body>
+</html>

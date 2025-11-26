@@ -11,7 +11,7 @@ type Vest struct {
 	// Symbol is the stock ticker, e.g., "GOOGL".
 	Symbol string `json:"symbol"`
 	// Quantity is the number of shares that vested.
-	Quantity int64 `json:"quantity"`
+	Quantity float64 `json:"quantity"`
 	// StrikePriceCents is the market price of a single share in USD cents at the time of vesting.
 	StrikePriceCents int64 `json:"strike_price_cents"`
 	// ECBRate is the ECB reference exchange rate (EUR per 1 USD) on the vesting date.
@@ -24,7 +24,7 @@ type Sale struct {
 	// Date of the sale in "YYYY-MM-DD" format.
 	Date string `json:"date"`
 	// Quantity is the total number of shares sold in this event.
-	Quantity int64 `json:"quantity"`
+	Quantity float64 `json:"quantity"`
 	// PriceCents is the price of a single share in USD cents at the time of sale.
 	PriceCents int64 `json:"price_cents"`
 	// ECBRate is the ECB reference exchange rate (EUR per 1 USD) on the sale date.
@@ -44,7 +44,7 @@ type SaleLot struct {
 	VestID string `json:"vest_id"`
 	// Quantity is the number of shares from the specified Vest that were
 	// disposed of in this specific Sale.
-	Quantity int64 `json:"quantity"`
+	Quantity float64 `json:"quantity"`
 }
 
 // ParseDate is a utility function to parse a date string in "YYYY-MM-DD" format
@@ -65,7 +65,7 @@ func ParseDate(dateStr string) (time.Time, error) {
 type SettledSale struct {
 	SaleDate           string  // from Sale
 	Ticker             string  // from Vest
-	NumShares          int64   // from SaleLot
+	NumShares          float64   // from SaleLot
 	SalePriceUSD       int64   // from Sale
 	GainLossUSD        int64   // Calculated: (SalePriceUSD - VestPriceUSD) * NumShares
 	BookValueUSD       int64   // Calculated: VestPriceUSD * NumShares

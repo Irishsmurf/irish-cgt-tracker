@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS vests (
     id TEXT PRIMARY KEY,              -- Unique identifier for the vest
     date TEXT NOT NULL,               -- Vesting date (YYYY-MM-DD)
     symbol TEXT NOT NULL,             -- Stock ticker symbol (e.g., GOOGL)
-    quantity INTEGER NOT NULL,        -- Number of shares vested
+    quantity REAL NOT NULL,        -- Number of shares vested
     strike_price_cents INTEGER NOT NULL, -- Price per share in USD cents at vest time
     ecb_rate REAL NOT NULL            -- USD to EUR ECB reference rate on the vest date
 );
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS vests (
 CREATE TABLE IF NOT EXISTS sales (
     id TEXT PRIMARY KEY,              -- Unique identifier for the sale
     date TEXT NOT NULL,               -- Sale date (YYYY-MM-DD)
-    quantity INTEGER NOT NULL,        -- Total number of shares sold
+    quantity REAL NOT NULL,        -- Total number of shares sold
     price_cents INTEGER NOT NULL,     -- Price per share in USD cents at sale time
     ecb_rate REAL NOT NULL,           -- USD to EUR ECB reference rate on the sale date
     is_settled BOOLEAN NOT NULL DEFAULT 0 -- Flag for CGT calculation status
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS sales (
 CREATE TABLE IF NOT EXISTS sale_lots (
     sale_id TEXT NOT NULL,            -- Foreign key to the sales table
     vest_id TEXT NOT NULL,            -- Foreign key to the vests table
-    quantity INTEGER NOT NULL,        -- Number of shares from the vest lot used in this sale
+    quantity REAL NOT NULL,        -- Number of shares from the vest lot used in this sale
     FOREIGN KEY(sale_id) REFERENCES sales(id),
     FOREIGN KEY(vest_id) REFERENCES vests(id),
     PRIMARY KEY (sale_id, vest_id)
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS sale_lots (
 CREATE TABLE IF NOT EXISTS settled_sales (
     sale_date TEXT,
     ticker TEXT,
-    num_shares INTEGER,
+    num_shares REAL,
     sale_price_usd INTEGER,
     gain_loss_usd INTEGER,
     book_value_usd INTEGER,
